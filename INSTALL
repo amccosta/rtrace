@@ -1,0 +1,22 @@
+To install the `rtrace' raytracer is quite simple:
+
+1.	Look at config.h to check whether your computer understands void
+	and other things.
+
+2.	Check the Makefile.
+
+3.	Type 'make' or 'make fast'. It should compile. To install type
+	'make install'.
+
+4.	To test, try running it on the "logo.sff" file. This file can be
+	created from the SFF document file (or man file).
+
+		rtrace [OPTIONS] logo.sff logo.pic >&logo.log
+
+	where [OPTIONS] can be: w400 p0 s8 S0.001
+
+5.	To display the image, you need to hack a filter to change it into
+	a format your display device can understand.  The format is simple
+	and described in the README.
+
+Antonio Costa.

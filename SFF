@@ -1,0 +1,272 @@
+This document describes the SFF (Simple File Format) used on the
+RTRACE ray tracer (Version 8). This a plain text line oriented format,
+with a file inclusion capability. As present, it is very simple to read
+and write this format from languages like C and Pascal, which was my main
+concern...
+
+(^ represents start of line!)
+
+***** Format SFF (Simple File Format) *****
+[Start of File]
+^... Comment
+^Eye(X Y Z)
+^Look(X Y Z)
+^Up(X Y Z)
+^View_angle(H V) [1,89 degrees]
+^... Comment
+^Background(R G B)
+^Ambient(R G B)
+^... Comment
+^Light_type(Type) Position(X Y Z) Bright(R G B) ...
+  |                                              |
+  |                  /---------------------------/
+  |                  |
+  V                  V
+ 1-POINT:
+ 2-DIRECTIONAL: Direction(X Y Z) Angle(La) Light_Factor(Lf)
+ 3-EXTENDED:    Radius(R) Samples(N)
+^Etc
+^<NL>
+^... Comment
+^Surface_type(Type) Color(R G B) ...
+  |                               |
+  |        /----------------------/
+  |        |
+  V        V
+ 1-: Diffuse(R G B) Specular(R G B) Phong(Pf) Metalness(Mf) Trans.(R G B) 
+ 2-: Smoothness(R G B) Metalness(R G B) Transmission(R G B) 
+^Etc
+^<NL>
+^... Comment
+^Object_type(Type) Surface_ID(S) Refraction(Re) ...
+  |                                              |
+  |                     /------------------------/
+  |                     |
+  V                     V
+ 1-SPHERE:          Center(X Y Z) Radius(R)
+ 2-PARALLELIPIPED:  Center(X Y Z) Size(X Y Z)
+ 3-PATCH:           Origin(X Y Z) Scale(X Y Z) Filename(...)
+ 4-CONE/CYLINDER:   Apex(X Y Z) Apex_Radius(Ra) Base(X Y Z)
+                    Base_Radius(Rb)
+ 5-POLYGON:         Origin(X Y Z) Scale(X Y Z) Filename(...)
+ 6-TRIANGLE:        Origin(X Y Z) Scale(X Y Z) Filename(...)
+ 7-TEXT3D:          Filename(...)
+ 64-TEXTURE:        see below
+ 65-TRANSFORMATION: Object_ID(I)
+                    Transform(X1 Y1 Z1 W1 ... X4 Y4 Z4 W4)
+ 66-CSG 0:          Surface_ID(S) Refraction(Re) (Union-0 Sub-1 Int-2)
+    CSG 1:          Next CSG member
+    CSG 2:          End of CSG
+ 67-LIST 0:         Surface_ID(S) Refraction(Re)
+    LIST 1:         End of List
+^Etc
+^<NL>
+^... Comment
+^Texture_type(Type) Object_ID(I)
+  |                 Transform(X1 Y1 Z1 W1 ... X4 Y4 Z4 W4)
+  |                 ...
+  |                  |
+  V                  V
+ 0-NULL:
+ 1-CHECKER:   Surface_ID(S)
+ 2-BLOTCH:    Scale(K) Surface_ID(S) [Filename(...) or -]
+ 3-BUMP:      Scale(K)
+ 4-MARBLE:    [Filename(...) or -]
+ 5-FBM:       Offset(K) Scale(K) Omega(K) Lambda(L)
+              Threshold(K) Octaves(O)
+              [Filename(...) or -]
+ 6-FBMBUMP:   Offset(K) Scale(K) Lambda(L) Octaves(O)
+ 7-WOOD:      Color(R G B)
+ 8-ROUND:     Scale(K)
+ 9-BOZO:      Turbulence(K) [Filename(...) or -]
+ 11-WAVES:    Frequency(K) Phase(K) Scale(K)
+ 12-SPOTTED:  [Filename(...) or -]
+ 13-DENTS:    Scale(K)
+ 14-AGATE:    [Filename(...) or -]
+ 15-WRINKLES: Scale(K)
+ 16-GRANITE:  [Filename(...) or -]
+ 17-GRADIENT: Turbulence(K) Direction(X Y Z)
+              [Filename(...) or -]
+ 18-IMAGEMAP: Turbulence(K) Mode(K) Axis(X Y) Filename(...)
+ 19-GLOSS:    Scale(K)
+ 20-BUMP3D:   Scale(K) Size(K)
+^<NL>
+^... Comments
+[End of File]
+
+1. Valid ranges or data
+
+RGB must be in [0,1[
+(Note: RGB brightness of lights may be between ]0,300[;
+negative values mean to not attenuate with distance)
+XYZ must be in [-10000,10000]
+Factor must be in [0,300[
+
+Filename must a valid filename for the operating system, or then '-', in
+which case data is read from the standard input or the same SFF stream.
+
+2. Patch specification
+
+File format for PATCH (bicubic 4-sided patch):
+[Start]
+Patch_1_Index(1 2 3 4 5 6 7 8 9 10 11 12)
+Patch_2
+Etc
+<NL>
+Patch_1_Index_1_Coords(X Y Z)
+Patch_1_Index_2_Coords(X Y Z)
+Etc
+<NL>
+...
+[End]
+
+3. Polygon specification
+
+File format for POLYGON (n-sided planar polygon):
+[Start]
+Polygon_1_Vertex_Number Polygon_1_Index(1 2 3 ...)
+Polygon_2
+Etc
+<NL>
+Polygon_1_Index_1_Coords(X Y Z)
+Polygon_1_Index_2_Coords(X Y Z)
+Etc
+<NL>
+...
+[End]
+
+4. Triangle specification
+
+File format for TRIANGLE (3-sided polygon with vertex normals):
+[Start]
+Triangle_1_Vertice_1(X Y Z) Normal_1(X Y Z) Vertice_2(X Y Z) Normal_2(X Y Z) ...
+Triangle_2
+<NL>
+...
+[End]
+
+If the surface index is 0, then 3 surface indices must follow vertices and
+normals.
+
+5. An example
+
+[Start of File]
+View
+25 25 7         - Eye point
+0 0 0           - Look point
+0 1 0           - Up vector
+30 30           - View angles
+Colors
+0.196 0.6 0.8   - Background (Sky Blue)
+0.1 0.1 0.1     - Ambient light
+Lights
+1 0 60 60 0.9 0.9 0.9   - Point Light 1
+1 20 40 -7 0.9 0.9 0.9  - Point Light 2
+
+Surfaces
+1 0.6 0.8 0.196 0.99 0.99 0.99 0 0 0 0 0 0 0 0             - Yellow Green
+1 0.9 0.9 0.9 0.5 0.5 0.5 0.5 0.5 0.5 50 1 0 0 0           - White
+1 0.5 0.5 0.5 0.1 0.1 0.1 0.1 0.1 0.1 200 0.7 0.8 0.8 0.8  - Grey
+1 0.9 0.2 0.2 0.99 0.99 0.99 0 0 0 0 0 0 0 0               - Red
+
+Objects
+5 1 1.0 0 0 0 15 15 15  - Polygon
+4 1 2 3 4
+
+1 0 1
+1 0 -1
+-1 0 -1
+-1 0 1
+
+2 2 1.0 0 2 0 7 2 3     - Parallelipiped
+2 3 1.5 0 5 10 3 5 3    - Parallelipiped
+1 4 1.0 7 15 -7 3       - Sphere
+
+Textures
+2 1 2 0 0 0 0 2 0 0 0 0 2 0 0 0 0 1 0.4 4                 - Blotch
+4 2 5 0 0 0 0 5 0 0 0 0 5 0 0 0 0 1                       - Marble
+5 4 10 0 0 0 1 10 0 0 1 1 10 0 0 0 0 1 0 0.6 0.5 2 0.1 6  - FBM Bump
+
+End
+Demo / 11-OCT-1989 / Antonio Costa
+[End of File]
+
+To ray trace without textures, do
+
+        rtrace demo.sff demo.pic >&demo.log
+
+else, do
+
+        rtrace t2 demo.sff demo.pic >&demo.log
+
+Another example with INESC symbol:
+[Start of File]
+View
+45.0 45.0 81.0  - Eye point
+45.0 45.0 -81.0 - Look point
+ 0.0  1.0  0.0  - Up vector
+30 30           - View angles
+Colors
+0.196 0.6 0.8 - Background (Sky Blue)
+0.3 0.3 0.3   - Ambient
+Lights
+1  0.0 100.0 100.0 1 1 1 - Light 1 (White)
+1 90.0 100.0 100.0 1 1 0 - Light 2 (Yellow)
+
+Surfaces
+1 0.557 0.420 0.137 0.8 0.7 0.7 0.2 0.3 0.3 30 0.8 0 0 0 - Surf 1 (Steel Red)
+1 0.137 0.420 0.557 0.5 0.5 0.6 0.5 0.5 0.4 5 0.2 0 0 0  - Surf 2 (Steel Blue)
+1 0.600 0.800 0.200 0.9 0.9 0.9 0.0 0.0 0.0 1 0 0 0 0    - Surf 3 (Matte Green)
+
+Objects
+1 1 1.0 10.0 09.5 0.0 4.5 - Sphere
+1 1 1.0 10.0 26.5 0.0 4.5
+1 1 1.0 20.0 63.5 0.0 4.5
+1 1 1.0 20.0 80.0 0.0 4.5
+1 1 1.0 40.0 09.5 0.0 4.5
+1 1 1.0 40.0 26.5 0.0 4.5
+1 1 1.0 40.0 43.5 0.0 4.5
+1 1 1.0 50.0 80.0 0.0 4.5
+1 1 1.0 60.0 53.0 0.0 4.5
+1 1 1.0 70.0 09.5 0.0 4.5
+1 1 1.0 70.0 43.5 0.0 4.5
+4 2 1.0 10.0 30.0 0.0 1.5 10.0 70.0 0.0 1.5 - Cylinder
+1 2 1.0 10.0 70.0 0.0 1.5
+4 2 1.0 10.0 70.0 0.0 1.5 17.5 77.5 0.0 1.5
+4 2 1.0 12.5 12.0 0.0 1.5 20.0 19.5 0.0 1.5
+1 2 1.0 20.0 19.5 0.0 1.5
+4 2 1.0 20.0 19.5 0.0 1.5 20.0 60.0 0.0 1.5
+4 2 1.0 22.5 61.0 0.0 1.5 37.5 46.0 0.0 1.5
+4 2 1.0 37.5 12.0 0.0 1.5 30.0 19.5 0.0 1.5
+1 2 1.0 30.0 19.5 0.0 1.5
+4 2 1.0 30.0 19.5 0.0 1.5 30.0 33.5 0.0 1.5
+1 2 1.0 30.0 33.5 0.0 1.5
+4 2 1.0 30.0 33.5 0.0 1.5 37.5 41.0 0.0 1.5
+4 2 1.0 30.0 26.5 0.0 1.5 36.5 26.5 0.0 1.5
+4 2 1.0 40.0 47.0 0.0 1.5 40.0 70.0 0.0 1.5
+1 2 1.0 40.0 70.0 0.0 1.5
+4 2 1.0 40.0 70.0 0.0 1.5 47.5 77.5 0.0 1.5
+4 2 1.0 42.5 12.0 0.0 1.5 50.0 19.5 0.0 1.5
+1 2 1.0 50.0 19.5 0.0 1.5
+4 2 1.0 50.0 19.5 0.0 1.5 50.0 43.0 0.0 1.5
+1 2 1.0 50.0 43.0 0.0 1.5
+4 2 1.0 50.0 43.0 0.0 1.5 57.5 50.5 0.0 1.5
+4 2 1.0 67.5 12.0 0.0 1.5 60.0 19.5 0.0 1.5
+1 2 1.0 60.0 19.5 0.0 1.5
+4 2 1.0 60.0 19.5 0.0 1.5 60.0 33.5 0.0 1.5
+1 2 1.0 60.0 33.5 0.0 1.5
+4 2 1.0 60.0 33.5 0.0 1.5 67.5 41.0 0.0 1.5
+5 3 1.0 0.0 4.0 0.0 200.0 200.0 200.0 - Polygon
+4 1 2 3 4
+
+ 1.0 0.0  1.0
+ 1.0 0.0 -1.0
+-1.0 0.0 -1.0
+-1.0 0.0  1.0
+
+
+End
+INESC Logo / 23-FEB-1989 / Antonio Costa
+[End of File]
+
+INESC-Norte, 13 January 1993.

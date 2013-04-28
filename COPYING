@@ -1,0 +1,16 @@
+#
+# `rtrace' RayTracer
+#
+# a_costa@inescn.pt
+# a_costa@inescn.rccn.pt
+# acc@asterix.inescn.pt
+
+This program is public domain. Feel free to modify it, hack it, use 
+it inside other programs. I wrote it to better understand raytracing
+and hope that it helps others understand the raytracing process as well.
+
+Should you significantly extend my program, through bug fixes or additional
+features, send the changes back to me for inclusion in later versions
+of the program.
+
+Antonio Costa.

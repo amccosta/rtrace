@@ -1,0 +1,799 @@
+.TH RTRACE 1G "November, 1994" 1
+.SH NAME
+rtrace - ray tracing program
+.SH SYNOPSIS
+.B rtrace [options] scene image [>log]
+.SH AUTHOR
+Antonio Costa, INESC-Norte, 1989 1994
+.SH DESCRIPTION
+.I rtrace
+command performs ray tracing from a
+.I SFF
+text file which must describe a scene with objects, lights, surface
+definitions, textures, etc.
+This scene file must be in the appropriate format, as
+described bellow.
+.br
+Basically, ray tracing is an algorithm for the creation of realistic
+images from the geometry and attributes of objects, lights, etc.
+This ray tracer supports several types of objects (sphere, box, bicubic
+patch, cone, cylinder, polygon, triangle and text), CSG and list operations,
+different light types, reasonable surface definitions, lots of textures,
+several anti-aliasing schemes, depth of field, stereoscopic image creation
+and so on...
+.SH OPTIONS
+[w\fIimage-width\fR] [h\fIimage-height\fR]
+.br
+The parameters
+.I image-width
+and
+.I image-height
+define the image size. Defaults are 256x256.
+.PP
+[A\fIaliasing-threshold\fR]
+.br
+[S\fIshading-threshold\fR]
+.br
+[T\fIambient-threshold\fR]
+.br
+The parameters
+.I aliasing-threshold
+(pixel supersampling),
+.I shading-threshold
+(shading rays propagation) and
+.I ambient-threshold
+(ambient rays distribution caching)
+control the image quality (0-best, 1-poor). Defaults are 0.05, 
+0.01 and 0 (no ambient threshold). Good ranges are
+0.1-0.03, 0.01-0.001 and 0.01-0.00001, respectively.
+If the
+.I aliasing-threshold
+parameter is negative, contrast between pixel colors will be used
+instead of difference.
+.PP
+[a\fIantialiasing-mode\fR]
+.br
+The parameter
+.I antialiasing-mode
+chooses adaptive supersampling antialiasing (0-default), semi-adaptive
+supersampling antialiasing (1) or normal supersampling antialiasing (2-should
+be used with nonzero focal apertures).
+.PP
+[B\fImaskfile\fR]
+.br
+The parameter
+.I maskfile
+creates a file with a background mask, suitable for mixing images (it is
+like an alpha channel).
+.PP
+[b\fIbackface-mode\fR]
+.br
+The parameter
+.I backface-mode
+controls the removal of backface polygons and triangles from the scene.
+Default is no removal (0). Partial removal (1) is made when finding
+candidates for ray-object intersection; if there are any
+objects facing against the ray, they will be skipped. Full removal (2) is
+made during the read of the scene; if there are any objects facing
+against the viewer, they are thrown away completely (this may cause
+incorrect lighting and shadowing).
+.PP
+[c\fIcluster-size\fR]
+.br
+The parameter
+.I cluster-size
+controls the enclosing of objects
+(number of grouped objects per cluster) in the object hierarchy. Use a low
+value for sparse scenes, a high value for dense scenes (4-default).
+Negative values means to use a method similar to the one of Goldsmith/Salmon
+for clustering objects (0 uses the default value for this method).
+Most of the times it performs better than the default method.
+.PP
+[d\fIambient-levels\fR]
+.br
+The parameter
+.I ambient-levels
+defines the number of shading levels (shading tree depth) in which
+ambient lighting calculations will be done through ray
+distribution (0-default, ie, no ray distribution). Use low values!
+.PP
+[D\fIambient-samples\fR]
+.br
+The parameter
+.I ambient-samples
+defines the maximum number of distributed rays to be used in ambient
+lighting calculations (16-default). Again, use with care.
+.PP
+[i\fIintersect-mode\fR]
+.br
+The parameter
+.I intersect-mode
+chooses, in adaptive supersampling antialiasing, between testing
+all scene objects (1) or only the objects found at the pixel
+corners and inside (0-default; this greatly reduces CPU time, but with
+very small objects, it sometimes fails).
+.PP
+[I\fIintersect-adjust-mode\fR]
+.br
+The parameter
+.I intersect-adjust-mode
+avoids some problems with invalid self-intersections (1) (0-default).
+Scenes with text objects should be traced with this parameter equal to 1.
+.PP
+[j\fIjittering-mode\fR]
+.br
+The parameter
+.I jittering-mode
+chooses jittered sampling (1) or not (0-default). Sometimes, activating it
+produces better images from scenes with small tricky details.
+.PP
+[l\fIlighting-mode\fR]
+.br
+The parameter
+.I light-mode
+controls the generation of shadow rays through non-opaque objects:
+0-none (default), 1-partial, 2-full. If a scene has translucent objects, to
+obtain realism one should use 1 or 2 (better).
+.PP
+[m\fIshading-mode\fR]
+.br
+The parameter
+.I shading-mode
+chooses between shading models: 0-normal phong, 1-strauss (default but slower)
+(note: this model was developed by Paul Strauss of SGI).
+.PP
+[n\fInormal-mode\fR]
+.br
+The parameter
+.I normal-mode
+controls the correction of surface normals,
+so that it points against the incident ray:
+0-always (default), 1-only inside objects. With "correct" objects, it is good
+to use 1.
+.PP
+[x\fIwalk-mode\fR]
+.br
+The parameter
+.I walk-mode
+controls how pixels are scanned inside the picture. Default is 0, which is
+a serpertine walk (left to right, right to left, and so on). 1 means an
+Hilbert (fractal) walk, which demands more memory, but maximizes the effect
+of pixel coherency (in scenes with many objects, it can save some time!).
+Perhaps 1 should be the default...
+.PP
+[z\fInormal-check-mode\fR]
+.br
+The parameter
+.I normal-check-mode
+controls the correction of surface normals
+when textures that modify the normal are used,
+as they may sometimes create strange surface effects. This tends to happen if
+the scale of the normal perturbation is big.
+0-no correction (default), 1-correction.
+.PP
+[R\fIrawfile\fR]
+.br
+The parameter
+.I rawfile
+creates a raw image file, without any antialiasing (all defects show up!).
+.PP
+[p\fIsampling-levels\fR]
+.br
+The parameter
+.I sampling-levels
+controls the amount of sampling levels inside pixels:
+0-none (default) ... 3-maximum. A reasonable value is 2 for high resolutions,
+but for small ones 3 gives better (and slower) results.
+.PP
+[s\fIshading-levels\fR]
+.br
+The parameter
+.I shading-levels
+establishes a maximum shading tree depth (default is 8). When a scene has
+transparent/reflective objects, it may be important to lower this parameter,
+or else the tracing never stops. In the other cases, there
+should be no problem allowing it to be big.
+.PP
+[t\fItexture-mode\fR]
+.br
+The parameter
+.I texture-mode
+allows the definition of texture(s) for the objects: 0-no textures
+(default), 1-with textures defined inside objects field,
+2-with textures defined after objects field. As textures may consume much
+CPU time, they should be activated only for final images.
+.PP
+[v\fIview-mode\fR]
+.br
+The parameter
+.I view-mode
+chooses the view mode: 0-normal (default), 1-left eye, 2-right eye.
+.PP
+[P\fIfocal-aperture\fR]
+.br
+The parameter
+.I focal-aperture
+defines the focal aperture of the camera (default 0.0, ie, pinhole
+camera). If different than zero, there is depth of field, and so
+adaptive supersampling antialiasing will not work well.
+.PP
+[F\fIfocal-distance\fR]
+.br
+The parameter
+.I focal-distance
+defines the focal distance of the camera (default is the distance
+from the eye point to the look point).
+.PP
+[E\fIstereo-separation\fR]
+.br
+The parameter
+.I stereo-separation
+controls the separation between the left and the right eye.
+If negative, it represents a percentage of the gaze distance.
+.PP
+[O\fIoutput-format\fR]
+.br
+The parameter
+.I output-format
+chooses between the PIC format (0-default) or the PPM format (1).
+.PP
+[V\fIverbose-mode\fR]
+.br
+The parameter
+.I verbose-mode
+supresses any messages (0) or shows listing of parameters (1), previous plus
+statistics (2-default) or previous plus a line by line echo of the tracing
+(3-default on DOS and transputers). Note: when running the DOS DJGPP version,
+there are two extra values that display the picture on the screen, -1 for
+grayscale or -2 for color. These values supress any messages.
+.PP
+[+O\fIobjects-max\fR]
+.br
+The parameter
+.I objects-max
+defines the maximum number of objects to use (default is 25000).
+.PP
+[+L\fIlights-max\fR]
+.br
+The parameter
+.I lights-max
+defines the maximum number of lights to use (default is 16).
+.PP
+[+S\fIsurfaces-max\fR]
+.br
+The parameter
+.I surfaces-max
+defines the maximum number of surfaces to use (default is 256).
+.PP
+[+C\fIcsg-level-max\fR]
+.br
+The parameter
+.I csg-level-max
+defines the maximum number of levels in CSG trees to use (default is 256).
+.PP
+[Me\fIeye-file\fR]
+.br
+The parameter
+.I eye-file
+is the name of a file that contains
+.I eye
+positions for movie fly-throughs
+(3 real numbers representing XYZ in each line). In
+.I movie
+mode, the scene is read only once and successive images are produced and
+stored in the picture file.
+.PP
+[Ml\fIlook-file\fR]
+.br
+The parameter
+.I look-file
+is the name of a file that contains
+.I look
+positions for movie fly-throughs.
+.PP
+[Mu\fIup-file\fR]
+.br
+The parameter
+.I up-file
+is the name of a file that contains
+.I up
+vectors for movie fly-throughs.
+.PP
+[Ma\fIangle-file\fR]
+.br
+The parameter
+.I angle-file
+is the name of a file that contains
+.I angle
+apertures for movie fly-throughs (2 real numbers in each line).
+.PP
+[M+\fImovie-frames-max\fR]
+.br
+The parameter
+.I movie-frames-max
+defines the maximum number of frames to produce (default is 50).
+.PP
+The
+.I scene
+data internal syntax (SFF) is described bellow.
+.PP
+The
+.I image
+file will contain the ray traced image.
+The image file has a 4 byte header composed of
+.I width
+LS and MS bytes,
+.I height
+LS and MS bytes and
+RGB byte triplets starting in the upper left corner line by line to
+the lower right corner.
+.SH RESTRICTIONS
+The straightforward use:
+
+  rtrace demo.sff demo.pic
+
+is not recommended, as ray tracing usually takes lots of
+CPU time to execute.
+.PP
+So, it is better to do:
+
+  rtrace demo.sff demo.pic >demo.log &
+
+or then use \fInice\fR (1) or similar strategies.
+.SH BUGS
+No bugs known.
+They have to be hidden deep somewhere, as usual.
+.SH DESCRIPTION
+SFF (Simple File Format) description follows. This is a very crude
+ASCII format, almost like if generated by a lexical analyser. The idea is to
+have other programs create scene descriptions in more sophisticated
+ways, and then feed the tokenized results to this program. So, it
+behaves accordingly to the UNIX philosophy: one program for one task.
+Complaints are not wellcome!...
+.PP
+There is a reasonable scene language available (SCN) that allows the creation
+of scenes with much more flexibility; the converter is called 'scn2sff'
+and works directly with this program.
+.PP
+Note: the ^(circunflex) character represents start of line.
+.PP
+[Start of File]
+.br
+^... Comment
+.br
+^Eye(X Y Z)
+.br
+^Look(X Y Z)
+.br
+^Up(X Y Z)
+.br
+^View_angle(H V) [1,89 degrees]
+.br
+^... Comment
+.br
+^Background(R G B)
+.br
+^Ambient(R G B)
+.br
+^... Comment
+.br
+^Light_type(Type) Position(X Y Z) Bright(R G B) ...
+  |                                              |
+  |                  /---------------------------/
+  |                  |
+  V                  V
+ 1-POINT:
+ 2-DIRECTIONAL: Direction(X Y Z) Angle(La) Light_Factor(Lf)
+ 3-EXTENDED:    Radius(R) Samples(N)
+ 4-PLANAR:      Vector1(X Y Z) Vector2(X Y Z) Samples1(N) Samples2(N)
+.br
+^Etc
+.br
+^<NL>
+.br
+^... Comment
+.br
+^Surface_type(Type) Color(R G B) ...
+  |                               |
+  |        /----------------------/
+  |        |
+  V        V
+ 1-: Dif(R G B) Spec(R G B) Phong(Pf) Metal(Mf) Trans(R G B) 
+ 2-: Smoothness(R G B) Metalness(R G B) Transmission(R G B) 
+.br
+^Etc
+.br
+^<NL>
+.br
+^... Comment
+.br
+^Object_type(Type) Surface_ID(S) Refraction(Re) ...
+  |                                              |
+  |                     /------------------------/
+  |                     |
+  V                     V
+ 1-SPHERE:          Center(X Y Z) Radius(R)
+ 2-PARALLELIPIPED:  Center(X Y Z) Size(X Y Z)
+ 3-PATCH:           Origin(X Y Z) Scale(X Y Z) Filename(...)
+ 4-CONE/CYLINDER:   Base(X Y Z) Base_Radius(Rb) Apex(X Y Z)
+                    Apex_Radius(Ra)
+ 5-POLYGON:         Origin(X Y Z) Scale(X Y Z) Filename(...)
+ 6-TRIANGLE:        Origin(X Y Z) Scale(X Y Z) Filename(...)
+ 7-TEXT:            Filename(...)
+.br
+or
+.br
+ 64-TEXTURE:        see below      
+ 65-TRANSFORMATION: Object_ID(I)
+                    Transform(X1 Y1 Z1 W1 ... X4 Y4 Z4 W4)
+ 66-CSG 0:          Surface_ID(S) Refraction(Re) (Union-0 Sub-1 Int-2)
+    CSG 1:          Next CSG member
+    CSG 2:          End of CSG
+ 67-LIST 0:         Surface_ID(S) Refraction(Re)
+    LIST 1:         End of List
+.br
+^Etc
+.br
+^<NL>
+.br
+^... Comment
+.br
+^Texture_type(Type) Object_ID(I)
+  |                 Transform(X1 Y1 Z1 W1 ... X4 Y4 Z4 W4)
+  |                 ...
+  |                  |
+  V                  V
+ 0-NULL:
+ 1-CHECKER:   Surface_ID(S)
+ 2-BLOTCH:    Scale(K) Surface_ID(S) [Filename(...) or -]
+ 3-BUMP:      Scale(K)
+ 4-MARBLE:    [Filename(...) or -]
+ 5-FBM:       Offset(K) Scale(K) Omega(K) Lambda(L)
+              Threshold(K) Octaves(O)
+              [Filename(...) or -]
+ 6-FBMBUMP:   Offset(K) Scale(K) Lambda(L) Octaves(O)
+ 7-WOOD:      Color(R G B)
+ 8-ROUND:     Scale(K)
+ 9-BOZO:      Turbulence(K) [Filename(...) or -]
+ 10-RIPPLES:  Frequency(K) Phase(K) Scale(K)
+ 11-WAVES:    Frequency(K) Phase(K) Scale(K)
+ 12-SPOTTED:  [Filename(...) or -]
+ 13-DENTS:    Scale(K)
+ 14-AGATE:    [Filename(...) or -]
+ 15-WRINKLES: Scale(K)
+ 16-GRANITE:  [Filename(...) or -]
+ 17-GRADIENT: Turbulence(K) Direction(X Y Z)
+              [Filename(...) or -]
+ 18-IMAGEMAP: Turbulence(K) Mode(K) Axis(X Y) Filename(...)
+ 19-GLOSS:    Scale(K)
+ 20-BUMP3:    Scale(K) Size(K)
+.br
+^<NL>
+.br
+^... Comments
+.br
+[End of File]
+.PP
+1. Valid ranges of data
+.PP
+RGB must be in [0,1[
+(Note: RGB brightness of lights may be between ]-300,300[;
+negative values mean to not attenuate with distance).
+.PP
+XYZ must be in [-10000,10000]
+.PP
+Factor must be in [0,300[
+.PP
+Filename must a valid filename for the operating system, or then '-', in
+which case data is read from the standard input or the current SFF stream.
+.PP
+2. Patch specification
+.PP
+File format for PATCH (bicubic 4-sided patch):
+.PP
+[Start]
+.br
+^Patch_1_Index(1 2 3 4 5 6 7 8 9 10 11 12)
+.br
+^Patch_2
+.br
+^Etc
+.br
+^<NL>
+.br
+^Patch_Index_1_Coords(X Y Z)
+.br
+^Patch_Index_2_Coords(X Y Z)
+.br
+^Etc
+.br
+^<NL>
+.br
+^...
+.br
+[End]
+.PP
+3. Polygon specification
+.PP
+File format for POLYGON (n-sided planar polygon):
+.PP
+[Start]
+.br
+^Polygon_1_Vertex_Number Polygon_1_Index(1 2 3 ...)
+.br
+^Polygon_2
+.br
+^Etc
+.br
+^<NL>
+.br
+^Polygon_Index_1_Coords(X Y Z)
+.br
+^Polygon_Index_2_Coords(X Y Z)
+.br
+^Etc
+.br
+^<NL>
+.br
+^...
+.br
+[End]
+.PP
+4. Triangle specification
+.PP
+File format for TRIANGLE (3-sided polygon with vertex normals):
+.PP
+[Start]
+.br
+^Triangle_1_Vertice_1(X Y Z) Normal_1(X Y Z)
+            Vertice_2(X Y Z) Normal_2(X Y Z)
+            Vertice_3(X Y Z) Normal_3(X Y Z)
+.br
+^Triangle_2
+.br
+^<NL>
+.br
+^...
+.br
+[End]
+.PP
+If the surface is has index 0, then you must specify 3 surface indices
+after all the vertices and normals.
+.PP
+5. An example
+.PP
+[Start of File]
+.br
+View
+.br
+25 25 7         - Eye point
+.br
+0 0 0           - Look point
+.br
+0 1 0           - Up vector
+.br
+30 30           - View angles
+.br
+Colors
+.br
+0.196 0.6 0.8   - Background (Sky Blue)
+.br
+0.1 0.1 0.1     - Ambient light
+.br
+Lights
+.br
+1 0 60 60 0.9 0.9 0.9  - Point Light 1
+.br
+1 20 40 -7 0.9 0.9 0.9 - Point Light 2
+.br
+<NL>
+.br
+Surfaces
+.br
+1 0.6 0.8 0.196 0.99 0.99 0.99 0 0 0 0 0 0 0 0
+.br
+1 0.9 0.9 0.9 0.5 0.5 0.5 0.5 0.5 0.5 50 1 0 0 0
+.br
+1 0.5 0.5 0.5 0.1 0.1 0.1 0.1 0.1 0.1 200 0.7 0.8 0.8 0.8
+.br
+1 0.9 0.2 0.2 0.99 0.99 0.99 0 0 0 0 0 0 0 0
+.br
+<NL>
+.br
+Objects
+.br
+5 1 1.0 0 0 0 15 15 15  - Polygon
+.br
+4 1 2 3 4
+.br
+<NL>
+.br
+1 0 1
+.br
+1 0 -1
+.br
+-1 0 -1
+.br
+-1 0 1
+.br
+<NL>
+.br
+2 2 1.0 0 2 0 7 2 3     - Parallelepiped
+.br
+2 3 1.5 0 5 10 3 5 3    - Parallelepiped
+.br
+1 4 1.0 7 15 -7 3       - Sphere
+.br
+<NL>
+.br
+Textures
+.br
+2 1 2 0 0 0 0 2 0 0 0 0 2 0 0 0 0 1 0.4 4
+.br
+4 2 5 0 0 0 0 5 0 0 0 0 5 0 0 0 0 1
+.br
+5 4 10 0 0 0 1 10 0 0 1 1 10 0 0 0 0 1 0 0.6 0.5 2 0.1 6
+.br
+<NL>
+.br
+Demo / 11-OCT-1989 / Antonio Costa
+.br
+[End of File]
+.PP
+To ray trace without textures, do:
+
+  rtrace demo.sff demo.pic >&demo.log
+
+else, do:
+
+  rtrace t2 demo.sff demo.pic >&demo.log
+
+Another example with INESC symbol:
+.PP
+[Start of File]
+.br
+View
+.br
+45.0 45.0 81.0  - Eye point
+.br
+45.0 45.0 -81.0 - Look point
+.br
+ 0.0  1.0  0.0  - Up vector
+.br
+30 30           - View angles
+.br
+Colors
+.br
+0.196 0.6 0.8 - Background (Sky Blue)
+.br
+0.3 0.3 0.3   - Ambient
+.br
+Lights
+.br
+1  0.0 100.0 100.0 1 1 1 - Light 1 (White)
+.br
+1 90.0 100.0 100.0 1 1 0 - Light 2 (Yellow)
+.br
+<NL>
+.br
+Surfaces
+.br
+1 0.557 0.420 0.137 0.8 0.7 0.7 0.2 0.3 0.3 30 0.8 0 0 0
+.br
+1 0.137 0.420 0.557 0.5 0.5 0.6 0.5 0.5 0.4 5 0.2 0 0 0
+.br
+1 0.600 0.800 0.200 0.9 0.9 0.9 0.0 0.0 0.0 1 0 0 0 0
+.br
+<NL>
+.br
+Objects
+.br
+1 1 1.0 10.0 09.5 0.0 4.5 - Sphere
+.br
+1 1 1.0 10.0 26.5 0.0 4.5
+.br
+1 1 1.0 20.0 63.5 0.0 4.5
+.br
+1 1 1.0 20.0 80.0 0.0 4.5
+.br
+1 1 1.0 40.0 09.5 0.0 4.5
+.br
+1 1 1.0 40.0 26.5 0.0 4.5
+.br
+1 1 1.0 40.0 43.5 0.0 4.5
+.br
+1 1 1.0 50.0 80.0 0.0 4.5
+.br
+1 1 1.0 60.0 53.0 0.0 4.5
+.br
+1 1 1.0 70.0 09.5 0.0 4.5
+.br
+1 1 1.0 70.0 43.5 0.0 4.5
+.br
+4 2 1.0 10.0 30.0 0.0 1.5 10.0 70.0 0.0 1.5 - Cylinder
+.br
+1 2 1.0 10.0 70.0 0.0 1.5
+.br
+4 2 1.0 10.0 70.0 0.0 1.5 17.5 77.5 0.0 1.5
+.br
+4 2 1.0 12.5 12.0 0.0 1.5 20.0 19.5 0.0 1.5
+.br
+1 2 1.0 20.0 19.5 0.0 1.5
+.br
+4 2 1.0 20.0 19.5 0.0 1.5 20.0 60.0 0.0 1.5
+.br
+4 2 1.0 22.5 61.0 0.0 1.5 37.5 46.0 0.0 1.5
+.br
+4 2 1.0 37.5 12.0 0.0 1.5 30.0 19.5 0.0 1.5
+.br
+1 2 1.0 30.0 19.5 0.0 1.5
+.br
+4 2 1.0 30.0 19.5 0.0 1.5 30.0 33.5 0.0 1.5
+.br
+1 2 1.0 30.0 33.5 0.0 1.5
+.br
+4 2 1.0 30.0 33.5 0.0 1.5 37.5 41.0 0.0 1.5
+.br
+4 2 1.0 30.0 26.5 0.0 1.5 36.5 26.5 0.0 1.5
+.br
+4 2 1.0 40.0 47.0 0.0 1.5 40.0 70.0 0.0 1.5
+.br
+1 2 1.0 40.0 70.0 0.0 1.5
+.br
+4 2 1.0 40.0 70.0 0.0 1.5 47.5 77.5 0.0 1.5
+.br
+4 2 1.0 42.5 12.0 0.0 1.5 50.0 19.5 0.0 1.5
+.br
+1 2 1.0 50.0 19.5 0.0 1.5
+.br
+4 2 1.0 50.0 19.5 0.0 1.5 50.0 43.0 0.0 1.5
+.br
+1 2 1.0 50.0 43.0 0.0 1.5
+.br
+4 2 1.0 50.0 43.0 0.0 1.5 57.5 50.5 0.0 1.5
+.br
+4 2 1.0 67.5 12.0 0.0 1.5 60.0 19.5 0.0 1.5
+.br
+1 2 1.0 60.0 19.5 0.0 1.5
+.br
+4 2 1.0 60.0 19.5 0.0 1.5 60.0 33.5 0.0 1.5
+.br
+1 2 1.0 60.0 33.5 0.0 1.5
+.br
+4 2 1.0 60.0 33.5 0.0 1.5 67.5 41.0 0.0 1.5
+.br
+5 3 1.0 0.0 4.0 0.0 200.0 200.0 200.0 - Polygon
+.br
+4 1 2 3 4
+.br
+<NL>
+.br
+ 1.0 0.0  1.0
+.br
+ 1.0 0.0 -1.0
+.br
+-1.0 0.0 -1.0
+.br
+-1.0 0.0  1.0
+.br
+<NL>
+.br
+<NL>
+.br
+End
+.br
+INESC Logo / 23-FEB-1989 / Antonio Costa
+.SH HISTORY
+Copyright (C) 1988, 1994 Antonio Costa.
+.br
+Permission is granted to use this file in whole or
+in part for any purpose, educational,
+recreational or commercial, provided that this copyright notice
+is retained unchanged. This software is available to all free of
+charge by anonymous FTP.
+.TP
+08-Nov-94  Antonio Costa
+.br
+Release 8.4.2
+.br
+acc@asterix.inescn.pt

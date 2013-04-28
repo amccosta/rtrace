@@ -1,0 +1,88 @@
+# Makefile for ray-tracing program
+# Version:  8.4.2 (08/11/94)
+# Author:  Antonio Costa, INESC-Norte.
+
+VERSION=V8.4.2
+
+CC=gcc
+LINK=gcc
+DEFS=-finline-functions #-I../suit/include -DSUIT
+CFLAGS=$(DEFS) -O2
+CFLAGS2=$(DEFS) -O
+LDFLAGS=-s -static #-L../suit/lib
+#LIBS=-lsuit -lsrgp -lX11
+
+# BINDIR=$$HOME/bin
+# MANDIR=$$HOME/man
+BINDIR=.
+MANDIR=.
+EXEC=rtrace
+DOCS=$(EXEC).man COPYING INSTALL Makefile.ALL README SFF RTrace.sui
+HDRS=config.h defs.h extern.h pp.h pp_ext.h textrace.h patch.h nmalloc.h\
+ vms.h dos.h hpux.h transp.h mac.h general.h
+SRCS=alias.c box.c cone.c csg.c data.c enclose.c intersec.c light.c list.c\
+ main.c noise.c object.c params.c patch.c patch1.c picture.c polygon.c\
+ pqueue.c scene.c shade.c shadligh.c shadmod1.c shadmod2.c shadtext.c\
+ sphere.c surface.c text.c textrace.c texture.c triangle.c nmalloc.c\
+ etc.c enclose2.c dispgrx.c enclose3.c serpent.c hilbert.c random.c
+OBJS=alias.o box.o cone.o csg.o data.o enclose.o intersec.o light.o list.o\
+ main.o noise.o object.o params.o patch.o patch1.o picture.o polygon.o\
+ pqueue.o scene.o shade.o shadligh.o shadmod1.o shadmod2.o shadtext.o\
+ sphere.o surface.o text.o textrace.o texture.o triangle.o nmalloc.o\
+ etc.o enclose2.o enclose3.o serpent.o hilbert.o random.o
+
+all:		exec 
+
+install:	exec manual
+
+$(OBJS):	$(HDRS)
+
+scene.o:	scene.c $(HDRS)
+	$(CC) $(CFLAGS2) -c $*.c
+
+csg.o:		csg.c $(HDRS)
+	$(CC) $(CFLAGS2) -c $*.c
+
+params.o:	params.c $(HDRS)
+	$(CC) $(CFLAGS2) -c $*.c
+
+logo:
+	@echo "RTrace version $(VERSION) / VMS-UNIX-DOS"
+	@echo "Copyright (C) 1988, 1994 Antonio Costa / INESC-Norte"
+
+exec:		logo $(OBJS)
+	@echo "Linking..."
+	$(LINK) $(LDFLAGS) $(OBJS) -o $(BINDIR)/$(EXEC) $(LIBS) -lm
+	@chmod 755 $(BINDIR)/$(EXEC)
+	@echo "Compilation done."
+
+manual:		logo $(EXEC).man
+	@echo "Installing man..."
+	@rm -f $(MANDIR)/$(EXEC).1
+	@cp $(EXEC).man $(MANDIR)/$(EXEC).1
+	@chmod 644 $(MANDIR)/$(EXEC).1
+	@echo "Man installation done."
+
+clean:		logo
+	@echo "Removing object file(s)..."
+	@rm -f $(OBJS)
+	@echo "Clean done."
+
+cleanall:	logo $(SRCS) $(HDRS) $(DOCS)
+	@echo "Removing all..."
+	@rm -f $(SRCS) $(HDRS) $(DOCS)
+	@rm -f $(OBJS)
+	@echo "Clean all done."
+
+archive:	logo $(SRCS) $(HDRS) $(DOCS)
+	@echo "Archiving..."
+	@rm -f $(EXEC).tar*
+	@tar cvf $(EXEC).tar $(HDRS) $(SRCS) $(DOCS)
+	@chmod 600 $(EXEC).tar
+	@compress $(EXEC).tar
+	@echo "Archival done."
+
+extract:	logo $(EXEC).tar.Z
+	@echo "Extracting..."
+	@zcat $(EXEC).tar|tar xvf - $(HDRS) $(SRCS) $(DOCS)
+	@echo "Extraction done."
